@@ -1,0 +1,882 @@
+<transition name="fade">
+    <div id="email-builder" v-if="!loading">
+        <div class="email-builder-preview-actions" :class="{preview: preview}">
+            <div class="md-btn-group">
+                <button class="md-btn md-btn-danger" @click="preview = false">Close preview</button>
+                <button class="md-btn md-btn-success" v-if="hasChanges()" @click="saveEmailTemplate()">Save email</button>
+            </div>
+        </div>
+        <div class="email-builder-header" :class="{preview: preview}">
+            <div class="email-builder-header-actions">
+                <h2>Logo</h2>
+            </div>
+
+            <div class="email-builder-header-actions">
+                <div class="md-btn-group">
+                    <i class="actions md-icon material-icons close md-color-red-600" :class="{disabled: !currentElement.type}" title="Close email settings"
+                        @click="editElement()">close</i>
+                    <i class="actions md-icon material-icons save md-color-green-600" title="Save email" :class="{disabled: !hasChanges()}" @click="hasChanges() && saveEmailTemplate()">save</i>
+                    <i class="actions md-icon material-icons" title="Email settings" @click="editElement('emailSettings')">settings</i>
+                </div>
+
+                <div class="md-btn-group">
+                    <button class="md-btn md-btn-success" @click="previewEmail()">
+                    <i class="material-icons">remove_red_eye</i>
+                    Preview
+                </button>
+                    <button class="md-btn md-btn-primary" @click="importJson()">
+                    <i class="material-icons">undo</i>
+                    Import JSON
+                </button>
+                    <button class="md-btn md-btn-primary" @click="exportJson()">
+                    <i class="material-icons">redo</i>
+                    Export JSON
+                </button>
+                    <button class="md-btn md-btn-primary" @click="exportEmail()">
+                    <i class="material-icons">redo</i>
+                    Export HTML
+                </button>
+                </div>
+            </div>
+        </div>
+        <div class="email-builder-content" :style="{backgroundColor: Email.emailSettings.options.backgroundColor}">
+            <div v-if="currentTab == 'elements'" class="md-card" :class="{preview: preview}">
+                <div class="md-card-content elements-list">
+                    <h1>Drag & Drop Sections</h1>
+                    <draggable :list="sectionTypes" :options="{group: { name: 'sections', pull: 'clone', put: false }, sort: false, dragClass: 'drag-element'}" @start="onMove" @end="onMoveEnd" :clone="clone" element="ul" class="md-list md-list-addon" ref="sectionTypes">
+                        <li class="section" v-for="element in sectionTypes" :data-type="element.type">
+                            <div class="md-list-addon-element sections-tiles">
+                                <span :title="element.primary_head">{{element.icon}}</span>
+                            </div>
+                        </li>
+                    </draggable>
+
+                    <h1>Drag & Drop Content</h1>
+                    <draggable :list="elements" :options="{group: { name: 'elements', pull: 'clone', put: false }, sort: false, dragClass: 'drag-element'}" @start="onMove" @end="onMoveEnd" :clone="clone" element="ul" class="md-list md-list-addon" ref="elements">
+                        <li class="element" v-for="element in elements" :data-type="element.type" @mousedown="onNewDragableElementClick()">
+                            <div class="md-list-addon-element">
+                                <i class="material-icons" v-html="element.icon" :title="element.second_head"></i>
+                                <span class="md-list-element-title">{{element.primary_head}}</span>
+                            </div>
+                        </li>
+                    </draggable>
+                </div>
+            </div>
+            <div v-if="currentTab == 'emailSettings'" id="emailSettings" class="md-card element-settings">
+                <h1 style="margin-top: 0px;">General Settings</h1>
+                <div class="md-card-content">
+                    <table>
+                        <form action="#" onsubmit="return false">
+                                <div v-if="currentElement.type && currentElement.type == 'emailSettings'" class="email-builder-element-edit-field">
+
+                                    <tr class="block-properties">
+                                        <td>
+                                            <div class="label-padding"><span class="label">Max Width</span></div>
+                                            <div class="range-input-container">
+                                                <input type="range" min="100" max="2000" v-model.number="currentElement.options.width">
+                                                <input type="number" min="100" max="2000" v-model.number="currentElement.options.width">
+                                            </div>
+                                        </td>
+                                    </tr>
+
+                                    <tr class="block-properties">
+                                        <td style="padding-top: 0; margin-top: 0;">
+                                            <div class="label-padding"><span class="label">Padding Top</span></div>
+                                            <div class="range-input-container">
+                                                <input type="range" min="0" max="200" v-model.number="currentElement.options.paddingTop">
+                                                <input type="number" min="0" max="200" v-model.number="currentElement.options.paddingTop">
+                                            </div>
+                                        </td>
+                                    </tr>
+
+                                    <tr class="block-properties">
+                                        <td>
+                                            <div class="label-padding"><span class="label">Padding Bottom</span></div>
+                                            <div class="range-input-container">
+                                                <input type="range" min="0" max="200" v-model.number="currentElement.options.paddingBottom">
+                                                <input type="number" min="0" max="200" v-model.number="currentElement.options.paddingBottom">
+                                            </div>
+                                        </td>
+                                    </tr>
+
+                                    <tr class="block-properties">
+                                        <td>
+                                            <div class="label-padding"><span class="label">Background</span></div>
+                                            <div class="form-row text-inputs">
+                                                <div class="color-inputs">
+                                                    <color-picker :color="currentElement.options.backgroundColor" @update:color="color => currentElement.options.backgroundColor = color"></color-picker>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+        
+                                </div>
+                            </form>
+                    </table>
+                </div>
+            </div>
+            <div class="emailScreenMode">
+                <button @click="emailScreenMode = 'desktop'"  :class="{active: emailScreenMode == 'desktop'}"><i class="material-icons">desktop_mac</i></button>
+                
+                <button @click="emailScreenMode = 'mobile'"  :class="{active: emailScreenMode == 'mobile'}"><i class="material-icons">phone_iphone</i></button>
+            </div>
+            <div class="md-card md-list-tabs-left">
+                <div @click="currentTab = 'elements'" class="md-list-tab-button" :class="{ active: currentTab == 'elements'}">
+                    Content
+                </div>
+                <div @click="currentTab = 'emailSettings'; editElement('emailSettings'); " class="md-list-tab-button" :class="{ active: currentTab == 'emailSettings'}">
+                    Settings
+                </div>
+            </div>
+            <!-- Email -->
+            <div position-relative :class="{configured: !!currentElement.type && currentElement.type != 'emailSettings', preview: preview}">
+                <div @click="editElement('emailSettings'); currentTab = 'elements'" id="emailBuilderBackdropTarget"></div>
+                <div class="builder" style="margin-left: auto; margin-right: auto; position: relative;" :style="{marginTop:  emailScreenMode == 'mobile' ? '192px' : '40px', maxWidth: emailScreenMode == 'desktop' ? Email.emailSettings.options.width + 'px' : '375px', backgroundColor: Email.emailSettings.options.backgroundColor}">
+
+                    <draggable class="email-container" :class="{empty: !Email.elements.length, mobileHeight: emailScreenMode == 'mobile'}" style="box-sizing: border-box;" :style="{paddingTop: Email.emailSettings.options.paddingTop + 'px', paddingBottom: Email.emailSettings.options.paddingBottom + 'px'}" data-empty-template="Drag and drop elements here"
+                        :list="Email.elements" :options="{group: {name: 'main', put: ['elements', 'sections']}, sort: true, handle: 'i.actions.move'}"
+                        @add="onElementAdded" @start="onMove" @end="onMoveEnd" ref="emailElements">
+                        <div class="builder-element" :class="{selected: currentElement.id == element.id}" v-for="(element, element_index) in Email.elements" :key="element.id" :id="element.id">
+
+                            <!-- Sub Sections -->
+                            <template v-if="element.component === 'sectionTemplate'">
+                                <div class="section">
+                                    <table :style="{opacity: element.options.opacity}" width="100%" class="main" cellspacing="0" cellpadding="0" border="0">
+                                        <tbody>
+                                            <!-- DESKTOP PREVIEW -->
+                                            <template v-if="emailScreenMode !== 'mobile'">
+                                                <tr>
+                                                    <td class="sectionContent" v-for="(section, column_index) in element.options.columns" :style="{width: 100/element.options.columns.length + '%'}">
+                                                        <draggable :list="section.elements" :options="{group:{elements: 'people', put: 'elements'}}" @add="onElementAdded" @start="drag=true" @end="drag=false" class="section-placeholder" :class="{empty: !section.elements.length}" data-empty-template="Drag and drop elements here">
+                                                            <div v-for="element in section.elements" class="builder-element" :class="{selected: currentElement.id == element.id}" :key="element.id" :id="element.id">
+                                                                <component :emailScreenMode="emailScreenMode" :currentElement="currentElement" :element="element" :readonly="preview" :is="element.component" @click.native="editSectionElement(element.id, element_index, column_index)"></component>
+                                                                <i class="actions delete md-icon material-icons" title="Delete element" @click="removeSectionElement(element, element_index, column_index)">delete</i>
+                                                                <i class="actions clone md-icon material-icons" title="Clone element" @click="cloneSectionElement(element, element_index, column_index)">content_copy</i>
+                                                                <i v-if="Email.elements.length > 0" title="Move element" class="actions move md-icon material-icons">drag_handle</i>
+                                                            </div>
+                                                        </draggable>
+                                                    </td>
+                                                </tr>
+                                            </template>
+
+                                            <!-- MOBILE PREVIEW -->
+                                            <template v-if="emailScreenMode === 'mobile'">
+                                                <tr v-for="(section, column_index) in element.options.columns">
+                                                    <td class="sectionContent" style="100%">
+                                                        <draggable :list="section.elements" :options="{group:{elements: 'people', put: 'elements'}}" @start="drag=true" @end="drag=false" class="section-placeholder" :class="{empty: !section.elements.length}" data-empty-template="Drag and drop elements here">
+                                                            <div v-for="element in section.elements" class="builder-element" :class="{selected: currentElement.id == element.id}" :key="element.id" :id="element.id">
+                                                                <component :emailScreenMode="emailScreenMode" :currentElement="currentElement" :element="element" :readonly="preview" :is="element.component" @click.native="editSectionElement(element.id, element_index, column_index)"></component>
+                                                                <i class="actions delete md-icon material-icons" title="Delete element" @click="removeSectionElement(element, element_index, column_index)">delete</i>
+                                                                <i class="actions clone md-icon material-icons" title="Clone element" @click="cloneSectionElement(element, element_index, column_index)">content_copy</i>
+                                                                <i v-if="Email.elements.length > 1" title="Move element" class="actions move md-icon material-icons">drag_handle</i>
+                                                            </div>
+                                                        </draggable>
+                                                    </td>
+                                                </tr>
+                                            </template>
+                                            
+                                        </tbody>
+                                    </table>
+                                    <div class="sectionActions">
+                                        <i class="actions delete md-icon material-icons" title="Delete section" @click="removeElement(element)">delete</i>
+                                        <i class="actions clone md-icon material-icons" title="Clone section" @click="cloneElement(element)">content_copy</i>
+                                        <i v-if="Email.elements.length > 1" title="Move section" class="actions move md-icon material-icons">drag_handle</i>
+                                    </div>
+                                </div>
+                            </template>
+
+                            <!-- Modules -->
+                            <template v-if="element.component !== 'sectionTemplate'">
+                                <component :emailScreenMode="emailScreenMode" :currentElement="currentElement" :element="element" :readonly="preview" :is="element.component" @click.native="editElement(element.id)"></component>
+                                <i class="actions delete md-icon material-icons" title="Delete element" @click="removeElement(element)">delete</i>
+                                <i class="actions clone md-icon material-icons" title="Clone element" @click="cloneElement(element)">content_copy</i>
+                                <i v-if="Email.elements.length > 0" title="Move element" class="actions move md-icon material-icons">drag_handle</i>
+                            </template>
+                            
+                        </div>
+                    </draggable>
+
+                    <img v-if="emailScreenMode == 'mobile'" style="margin-left: auto; margin-right: auto; width: 431px; top: -147px; position: absolute; z-index: -1; left: -28px;" src="assets/mobile_template.png">
+                </div>
+            </div>
+
+            <!-- Settings Panel-->
+            <div class="md-card element-settings" :class="{empty: !currentElement.type || currentElement.type == 'emailSettings' || preview}">
+                <div class="md-card-content">
+
+                    <h1 class="elementTitle" > <i class="material-icons" @click="editElement('emailSettings'); currentTab = 'elements'">keyboard_arrow_left</i> {{(currentElement.type)|capitalize}}</h1>
+                    <table>
+                        <form action="#" onsubmit="return false" class="email-builder-element-edit-field">
+                            <template v-for="(option, key, index) in currentElement.options" v-if="currentElement.type && currentElement.type != 'emailSettings'"
+                                class="email-builder-element-edit-field">
+
+                                <!-- html -->
+                                <template v-if="key == 'html'">
+                                    <tr>
+                                        <td>
+                                            <label for="builder_el_html" class="label">HTML Code here</label>
+                                        </td>
+                                    </tr>
+                                    
+                                    <tr class="block-properties">
+                                        <td class="form-row text-inputs">
+                                            <textarea id="builder_el_html" style="resize: vertical" v-model="currentElement.options[key]" title="HTML Code"></textarea>
+                                        </td>
+                                    </tr>
+                                </template>
+
+                                <!-- image -->
+                                <template v-if="key.indexOf('image') > -1">
+                                    <tr>
+                                        <td class="label-padding">
+                                            <span class="label">image</span>
+                                        </td>
+                                    </tr>
+                                    <tr class="block-properties">
+                                        <td class="form-row text-inputs">
+                                            <div class="upload-image-container">
+                                                <button @click="selectImage()">
+                                                    <i class="material-icons">image</i>
+                                                </button>
+                                                <input type="text" class="image-path input" v-md-input v-model="currentElement.options[key]" />
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </template>
+
+                                <!-- iframeVideo -->
+                                <template v-if="key == 'iframeVideo'">
+                                    <tr>
+                                        <td>
+                                            <label for="builder_el_video" class="label">Iframe video code</label>
+                                        </td>
+                                    </tr>
+                                    <tr class="block-properties">
+                                        <td class="form-row textarea">
+                                            <input id="builder_el_video" type="text" class="input" placeholder="'<iframe ...></iframe>'" v-md-input v-model="currentElement.options[key]"/>
+                                        </td>
+                                    </tr>
+                                </template>
+
+                                <!-- fullWidth -->
+                                <template v-if="key == 'fullWidth'">
+                                    <tr>
+                                        <td class="label-padding">
+                                            <label v-if="currentElement.type == 'button'" class="label" id='yes' role="label" for="checkbox-1">Button Width</label>
+                                            <label v-else class="label" id='yes' role="label" for="checkbox-1">Video Width</label>
+                                        </td>
+                                    </tr>
+                                    <tr class="block-properties">
+                                        <td class="tdSelect form-row">
+                                            <select class="input" v-model="currentElement.options[key]">
+                                                <option value="true">Fill Width</option>
+                                                <option default value="false">Fluid</option>
+                                            </select>
+                                            <i class="dropdownCarrot material-icons">keyboard_arrow_down</i>
+                                        </td>
+                                    </tr>
+                                </template>
+                                
+                                <!-- width, height -->
+                                <template v-if="['width', 'height'].indexOf(key) > -1">
+                                    <tr>
+                                        <td class="label-padding">
+                                            <span class="label" v-if="key !== 'iconSize'">{{key|capitalize}}</span>
+                                            <span class="label" v-if="key == 'iconSize'">{{'Icon Size'|capitalize}}</span>
+                                        </td>
+                                    </tr>
+                                    <tr class="block-properties">
+                                        <td class="range-input-container">
+                                            <input type="range" min="40" max="800" v-model.number="currentElement.options[key]">
+                                            <input type="number" min="40" max="800" v-model.number="currentElement.options[key]">
+                                        </td>
+                                    </tr>
+                                </template>
+
+                                <!-- rows, columns -->
+                                <template v-if="['rows', 'columns'].indexOf(key) > -1">
+                                    <tr>
+                                        <td class="label-padding">
+                                            <span class="label">{{key|capitalize}}</span>
+                                        </td>
+                                    </tr>
+                                    <tr class="block-properties">
+                                        <td v-if="key === 'rows'" class="range-input-container">
+                                            <input type="range" min="1" max="3" v-model.number="currentElement.options[key]">
+                                            <input type="number" min="1" max="3" v-model.number="currentElement.options[key]">
+                                        </td>
+                                        <td v-if="key === 'columns'" class="range-input-container">
+                                            <input type="range" min="1" max="4" v-model.number="currentElement.options[key]">
+                                            <input type="number" min="1" max="4" v-model.number="currentElement.options[key]">
+                                        </td>
+                                    </tr>
+                                </template>
+
+                                <!-- Icon Size-->
+                                <template v-if="key == 'iconSize'">
+                                    <tr>
+                                        <td class="label-padding">
+                                            <span class="label">{{'Icon Size'|capitalize}}</span>
+                                        </td>
+                                    </tr>
+                                    <tr class="block-properties">
+                                        <td class="range-input-container">
+                                            <input type="range" min="20" max="120" v-model.number="currentElement.options[key]">
+                                            <input type="number" min="20" max="120" v-model.number="currentElement.options[key]">
+                                        </td>
+                                    </tr>
+                                </template>
+
+                                <!-- url -->
+                                <template v-if="key == 'url'">
+                                    <tr>
+                                        <td class="label-padding">
+                                            <label for="builder_el_o_url" class="label">URL</label>
+                                        </td>
+                                    </tr>
+                                    <tr class="block-properties">
+                                        <td class="form-row text-inputs">
+                                            <input id="builder_el_o_url" type="url" class="input" v-md-input v-model="currentElement.options[key]" />
+                                        </td>
+                                    </tr>
+                                </template>
+
+                                <!-- align -->
+                                <template v-if="key == 'align'">
+                                    <tr>
+                                        <td class="label-padding">
+                                            <span class="label">Alignment</span>
+                                        </td>
+                                    </tr>
+                                    <tr class="block-properties">
+                                        <td class="tdSelect form-row">
+                                            <select class="input" v-model="currentElement.options[key]">
+                                                <option value="left">Left</option>
+                                                <option default value="center">Center</option>
+                                                <option value="right">Right</option>
+                                            </select>
+                                            <i class="dropdownCarrot material-icons">keyboard_arrow_down</i>
+                                        </td>
+                                    </tr>
+                                </template>
+
+
+                                <!-- populateFromSource -->
+                                <template v-if="key == 'populateFromSource'">
+                                    <tr>
+                                        <td class="label-padding">
+                                            <span class="label">Populate from</span>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <div class="products-populate-from-container">
+                                                <button @click="currentElement.options[key].isActive = true; currentElement.options.activeProduct = {}" :class="{active: currentElement.options[key].isActive}">Source</button>
+                                                <button @click="currentElement.options[key].isActive = false" :class="{active: !currentElement.options[key].isActive}"class="">Catalog</button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    
+                                    <template v-if="currentElement.options[key].isActive">
+                                        <tr>
+                                            <td class="label-padding">
+                                                <span class="label">Source</span>
+                                            </td>
+                                        </tr>
+                                        <tr class="block-properties">
+                                            <td class="tdSelect form-row">
+                                                <select class="input" v-model="currentElement.options[key].source">
+                                                    <option v-for="source in currentElement.options[key].sourceOptions" :value="source">{{source}}</option>
+                                                </select>
+                                                <i class="dropdownCarrot material-icons">keyboard_arrow_down</i>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="label-padding">
+                                                <span class="label">Automatically Recommend</span>
+                                            </td>
+                                        </tr>
+                                        <tr class="block-properties">
+                                            <td class="tdSelect form-row">
+                                                <select class="input" v-model="currentElement.options[key].autoRecommend">
+                                                    <option value="true">Yes</option>
+                                                    <option value="false">No</option>
+                                                </select>
+                                                <i class="dropdownCarrot material-icons">keyboard_arrow_down</i>
+                                            </td>
+                                        </tr>
+                                    </template>
+
+                                    <template v-if="!currentElement.options[key].isActive">
+                                        <tr>
+                                            <td class="label-padding">
+                                                <span class="label">Products</span>
+                                            </td>
+                                        </tr>
+                                        <tr class="block-properties">
+                                            <td class="form-row">
+                                                <button class="product-browse-catalog" @click="selectProducts()">Browse</button>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </template>
+
+                                <!-- products -->
+                                <template v-if="key == 'products'">
+                                    <template v-if="!currentElement.options.populateFromSource.isActive">
+                                        <tr>
+                                            <td class="label-padding">
+                                                <span class="label">Order</span>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <div class="product-ordering-container">
+                                                    <draggable :list="currentElement.options.products" :options="{group: { name: 'products' }, sort: true, dragClass: 'drag-element'}" element="ul" class="md-list md-list-addon" ref="elements">
+                                                        <template v-for="(product, index) in currentElement.options.products">
+                                                            <li v-if="index < currentElement.options.rows * currentElement.options.columns" @click="currentElement.options.activeProduct = product" :class="{active: currentElement.options.activeProduct.id == product.id}">
+                                                                <div>
+                                                                    {{index+1}}
+                                                                </div>
+                                                            </li>
+                                                        </template>
+                                                    </draggable>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </template>
+
+                                    <tr>
+                                        <td class="label-padding">
+                                            <span class="label">Product Name</span>
+                                        </td>
+                                    </tr>
+                                    <tr class="block-properties">
+                                        <td class="tdSelect form-row">
+                                            <select class="input" v-model="currentElement.options.showProductName">
+                                                <option default value="true">Show</option>
+                                                <option value="false">Hide</option>
+                                            </select>
+                                            <i class="dropdownCarrot material-icons">keyboard_arrow_down</i>
+                                        </td>
+                                    </tr>
+
+                                    <tr>
+                                        <td class="label-padding">
+                                            <span class="label">Product Button</span>
+                                        </td>
+                                    </tr>
+                                    <tr class="block-properties">
+                                        <td class="tdSelect form-row">
+                                            <select class="input" v-model="currentElement.options.showProductButton">
+                                                <option default value="true">Show</option>
+                                                <option value="false">Hide</option>
+                                            </select>
+                                            <i class="dropdownCarrot material-icons">keyboard_arrow_down</i>
+                                        </td>
+                                    </tr>
+
+                                    <tr>
+                                        <td class="label-padding">
+                                            <span class="label">Product Price</span>
+                                        </td>
+                                    </tr>
+                                    <tr class="block-properties">
+                                        <td class="tdSelect form-row">
+                                            <select class="input" v-model="currentElement.options.showProductPrice">
+                                                <option default value="true">Show</option>
+                                                <option value="false">Hide</option>
+                                            </select>
+                                            <i class="dropdownCarrot material-icons">keyboard_arrow_down</i>
+                                        </td>
+                                    </tr>
+
+                                    <template v-if="currentElement.options.activeProduct.id !== undefined">
+
+                                        <!-- Name -->
+                                        <tr>
+                                            <td class="label-padding">
+                                                <span class="label">Name</span>
+                                            </td>
+                                        </tr>
+                                        <tr class="block-properties">
+                                            <td class="form-row text-inputs">
+                                                <input :id="key" type="text" class="input" v-md-input v-model="currentElement.options.activeProduct.name" />
+                                            </td>
+                                        </tr>
+
+                                        <!-- Image URL -->
+                                        <tr>
+                                            <td class="label-padding">
+                                                <span class="label">Image</span>
+                                            </td>
+                                        </tr>
+                                        <tr class="block-properties">
+                                            <td class="form-row text-inputs">
+                                                <input :id="key" type="text" class="input" v-md-input v-model="currentElement.options.activeProduct.image" />
+                                            </td>
+                                        </tr>
+
+                                        <!-- Price -->
+                                        <tr>
+                                            <td class="label-padding">
+                                                <span class="label">Price</span>
+                                            </td>
+                                        </tr>
+                                        <tr class="block-properties">
+                                            <td class="form-row text-inputs">
+                                                <input :id="key" type="text" class="input" v-md-input v-model="currentElement.options.activeProduct.price" />
+                                            </td>
+                                        </tr>
+
+                                        <!-- Button Text -->
+                                        <tr>
+                                            <td class="label-padding">
+                                                <span class="label">Button Text</span>
+                                            </td>
+                                        </tr>
+                                        <tr class="block-properties">
+                                            <td class="form-row text-inputs">
+                                                <input :id="key" type="text" class="input" v-md-input v-model="currentElement.options.activeProduct.buttonText" />
+                                            </td>
+                                        </tr>
+
+                                        <!-- buttonBackgroundColor -->
+                                        <tr>
+                                            <td class="label-padding">
+                                                <span class="label">Button color</span>
+                                            </td>
+                                        </tr>
+                                        <tr class="block-properties">
+                                            <td class="form-row text-inputs">
+                                                <div class="color-inputs">
+                                                    <color-picker :color="currentElement.options.activeProduct.buttonColor" @update:color="color => currentElement.options.activeProduct.buttonColor = color"></color-picker>
+                                                </div>
+                                            </td>
+                                        </tr>
+
+                                    </template>
+                                </template>
+
+                                <!-- title, subTitle, altTag, buttonText -->
+                                <template v-if="['title', 'subTitle'].indexOf(key) > -1 || key.search('altTag') > -1 || key == 'buttonText'">
+                                    <tr>
+                                        <td class="label-padding">
+                                            <label class="label" :for="key">{{ key | makeTitle }}</label>
+                                        </td>
+                                    </tr>
+                                    <tr class="block-properties">
+                                        <td class="form-row text-inputs">
+                                            <input :id="key" type="text" class="input" v-md-input v-model="currentElement.options[key]" />
+                                        </td>
+                                    </tr>
+                                </template>
+
+                                <!-- sub section title-->
+                                <template v-if="key.substr(0,10) == 'subSection'">
+                                    <tr>
+                                        <td>
+                                            <h1>{{currentElement.options[key]|capitalize}}</h1>
+                                        </td>
+                                    </tr>
+                                </template>
+
+                                <!-- Social Links -->
+                                <template v-if="key == 'links'">
+                                    <tr>
+                                        <td class="label-padding">
+                                            <span class="label">Social links</span>
+                                        </td>
+                                    </tr>
+                                    <tr class="block-properties">
+                                        <td class="tdSelect form-row dropdown-input">
+                                            <select class="input" id="network" @change="addSocialNetwork(currentElement.options.links, selectedNetwork)" v-model="selectedNetwork">
+                                                <option value="" selected disabled>Select network from list</option>
+                                                <option v-for="(link, key) in currentElement.options.links" v-if="!link.active" :value="key">{{key}}</option>
+                                            </select>
+                                            <i class="dropdownCarrot material-icons">keyboard_arrow_down</i>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="label-padding">
+                                            <label class="label" :for="key">{{key | capitalize}}</label>
+                                        </td>
+                                    </tr>
+                                    <tr class="block-properties" v-for="(link, key) in currentElement.options.links" v-if="link.active">
+                                        <td class="social-links">
+                                            <div>
+                                                <input type="text" class="input" v-md-input :id="key" :value="link.link" />
+                                                <button class="md-btn md-btn-flat md-btn-alert" @click="link.active = false">
+                                                    <i class="material-icons">delete</i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </template>
+                                
+                                <!-- padding, margin -->
+                                <template v-if="['padding', 'margin','innerPadding'].indexOf(key) > -1">
+                                    <tr>
+                                        <td class="label-padding">
+                                            <span v-if="key !== 'innerPadding'" class="label">{{key | capitalize}}</span>
+                                            <span v-if="key == 'innerPadding'" class="label">{{'Text Padding' | capitalize}}</span>
+                                        </td>
+                                    </tr>
+                                    <tr class="block-properties">
+                                        <td class="form-row padding-inputs padding-input-row">
+                                            <div>
+                                                <label for="builder_el_o_top" class="left">Top</label>
+                                                <div>
+                                                    <button @click="{ document.getElementById('builder_el_o_top_'+key).value = currentElement.options[key][0] - 1; document.getElementById('builder_el_o_top_'+key).dispatchEvent(new Event('input', { 'bubbles': true })); }">-</button>
+                                                    <input v-bind:id="'builder_el_o_top_' + key" type="number" class="md-input" v-model.number="currentElement.options[key][0]">
+                                                    <button @click="{ document.getElementById('builder_el_o_top_'+key).value = currentElement.options[key][0] + 1; document.getElementById('builder_el_o_top_'+key).dispatchEvent(new Event('input', { 'bubbles': true })); }">+</button>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label for="builder_el_o_right" class="">Bottom</label>
+                                                <div>
+                                                    <button @click="{ document.getElementById('builder_el_o_right_'+key).value = currentElement.options[key][2] - 1; document.getElementById('builder_el_o_right_'+key).dispatchEvent(new Event('input', { 'bubbles': true })); }">-</button>
+                                                    <input v-bind:id="'builder_el_o_right_' + key" type="number" class="md-input" v-model.number="currentElement.options[key][2]">
+                                                    <button @click="{ document.getElementById('builder_el_o_right_'+key).value = currentElement.options[key][2] + 1; document.getElementById('builder_el_o_right_'+key).dispatchEvent(new Event('input', { 'bubbles': true })); }">+</button>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr class="block-properties">
+                                        <td class="form-row padding-inputs padding-input-row padding-input-row-bottom">
+                                            <div>
+                                                <label for="builder_el_o_bottom" class="left">Left</label>
+                                                <div>
+                                                    <button @click="{ document.getElementById('builder_el_o_bottom_'+key).value = currentElement.options[key][3] - 1; document.getElementById('builder_el_o_bottom_'+key).dispatchEvent(new Event('input', { 'bubbles': true })); }">-</button>
+                                                    <input v-bind:id="'builder_el_o_bottom_' + key" type="number" class="md-input" v-model.number="currentElement.options[key][3]">
+                                                    <button @click="{ document.getElementById('builder_el_o_bottom_'+key).value = currentElement.options[key][3] + 1; document.getElementById('builder_el_o_bottom_'+key).dispatchEvent(new Event('input', { 'bubbles': true })); }">+</button>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label for="builder_el_o_left" class="">Right</label>
+                                                <div>
+                                                    <button @click="{ document.getElementById('builder_el_o_left_'+key).value = currentElement.options[key][1] - 1; document.getElementById('builder_el_o_left_'+key).dispatchEvent(new Event('input', { 'bubbles': true })); }">-</button>
+                                                    <input v-bind:id="'builder_el_o_left_' + key" type="number" class="md-input" v-model.number="currentElement.options[key][1]">
+                                                    <button @click="{ document.getElementById('builder_el_o_left_'+key).value = currentElement.options[key][1] + 1; document.getElementById('builder_el_o_left_'+key).dispatchEvent(new Event('input', { 'bubbles': true })); }">+</button>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </template>
+
+                                <!-- backgroundColor, color, buttonBackgroundColor -->
+                                <template v-if="key == 'backgroundColor' || key == 'color' || key == 'buttonBackgroundColor'">
+                                    <tr>
+                                        <td class="label-padding">
+                                            <label class="label" :for="key" v-if="key == 'backgroundColor'">Background</label>
+                                            <label class="label" :for="key" v-if="key == 'color'">Text color</label>
+                                            <label class="label" :for="key" v-if="key == 'buttonBackgroundColor'">Button color</label>
+                                        </td>
+                                    </tr>
+                                    <tr class="block-properties">
+                                        <td class="form-row text-inputs">
+                                            <div class="color-inputs">
+                                                <color-picker :color="currentElement.options[key]" @update:color="color => currentElement.options[key] = color"></color-picker>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </template>
+
+                                <!-- border -->
+                                <template v-if="key == 'border'">
+                                    <tr>
+                                        <td class="label-padding">
+                                            <label for="border-size" class="label">Border Size</label>
+                                        </td>
+                                    </tr>
+                                    <tr class="block-properties">
+                                        <td class="range-input-container">
+                                            <input type="range" min="0" max="20" v-model.number="currentElement.options[key]['size']">
+                                            <input type="number" min="0" max="20" v-model.number="currentElement.options[key]['size']">
+                                        </td>
+                                    </tr>
+                                    
+                                    <tr>
+                                        <td class="label-padding">
+                                            <label for="border-style" class="label">Border Style</label>
+                                        </td>
+                                    </tr>
+                                    <tr class="block-properties">
+                                        <td class="tdSelect form-row color-inputs">
+                                            <select class="input" id="border-style" v-model="currentElement.options[key]['style']">
+                                                <option v-for="option in currentElement.options[key]['styleOptions']" :value="option">{{option}}</option>
+                                            </select>
+                                            <i class="dropdownCarrot material-icons">keyboard_arrow_down</i>
+                                        </td>
+                                    </tr>
+
+                                    <tr>
+                                        <td class="label-padding">
+                                            <span class="label">Border Color</span>
+                                        </td>
+                                    </tr>
+                                    <tr class="block-properties">
+                                        <td class="form-row text-inputs">
+                                            <div class="color-inputs">
+                                                <color-picker :color="currentElement.options[key]['color']" @update:color="color => currentElement.options[key]['color'] = color"></color-picker>
+                                            </div>
+                                        </td>
+                                    </tr>
+
+                                    <template v-if="currentElement.options[key]['radius'] != undefined">
+                                        <tr>
+                                            <td class="label-padding">
+                                                <label for="border-radius" class="label">Border Radius</label>
+                                            </td>
+                                        </tr>
+                                        <tr class="block-properties">
+                                            <td class="range-input-container">
+                                                <input type="range" min="0" max="50" v-model.number="currentElement.options[key]['radius']">
+                                                <input type="number" min="0" max="50" v-model.number="currentElement.options[key]['radius']">
+                                            </td>
+                                        </tr>
+                                    </template>
+                                    
+                                </template>
+
+                                <!-- linkTo -->
+                                <template v-if="key.search('linkTo') > -1">
+                                    <tr>
+                                        <td class="label-padding">
+                                            <span class="label">{{key | makeTitle}}</span>
+                                        </td>
+                                    </tr>
+                                    <tr class="block-properties">
+                                        <td class="tdSelect form-row text-inputs">
+                                            <select class="input" id="link-to" v-model="currentElement.options[key]['type']">
+                                                <option v-for="option in currentElement.options[key]['typeOptions']" :value="option">{{option}}</option>
+                                            </select>
+                                            <i class="dropdownCarrot material-icons">keyboard_arrow_down</i>
+                                        </td>
+                                    </tr>
+                                    <template v-if="currentElement.options[key]['type'] !== 'none' && currentElement.options[key]['type'] === 'link'">
+                                        <tr><td><i class="material-icons">insert_link</i></td></tr>
+                                        <tr>
+                                            <td class="form-row text-inputs link-to">
+                                                <input id="link" required type="url" autofocus class="input" v-md-input v-model="currentElement.options[key]['link']" />
+                                            </td>
+                                        </tr>
+                                    </template>
+                                    <template v-if="currentElement.options[key]['type'] !== 'none' && currentElement.options[key]['type'] === 'email'">
+                                        <tr><td><i class="material-icons">email</i></td></tr>
+                                        <tr>
+                                            <td class="form-row text-inputs link-to">
+                                                <input id="link" required type="email" autofocus class="input" v-md-input v-model="currentElement.options[key]['link']" />
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </template>
+
+                                <!-- font -->
+                                <template v-if="key == 'font'">
+
+                                    <template v-if="currentElement.options[key]['family']">
+                                        <tr>
+                                            <td class="label-padding"><label for="font-family" class="label">Font</label></td>
+                                        </tr>
+                                        <tr class="block-properties">
+                                            <td class="tdSelect form-row text-inputs" >
+                                                <select class="input" id="font-family" v-model="currentElement.options[key]['family']">
+                                                    <option :style="{fontFamily: option}" v-for="option in currentElement.options[key]['familyOptions']" :value="option">{{option}}</option>
+                                                </select>
+                                                <i class="dropdownCarrot material-icons">keyboard_arrow_down</i>
+                                            </td>
+                                        </tr>
+                                    </template>
+
+                                    <template v-if="currentElement.options[key]['size'] !== undefined">
+                                        <tr>
+                                            <td class="label-padding">
+                                                <span v-if="currentElement.type=='image'" for="font-size" class="label">Size</span>
+                                                <span v-else for="font-size" class="label">Font Size</span>
+                                            </td>
+                                        </tr>
+                                        <tr class="block-properties">
+                                            <td class="tdSelect form-row text-inputs" >
+                                                <select class="input" id="font-family" v-model="currentElement.options[key]['size']">
+                                                    <option v-for="option in currentElement.options[key]['sizeOptions']" :value="option">{{option}}</option>
+                                                </select>
+                                                <i class="dropdownCarrot material-icons">keyboard_arrow_down</i>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                    
+                                    <template v-if="currentElement.options[key]['color']">
+                                        <tr>
+                                            <td class="label-padding">
+                                                <span class="label">Font Color</span> 
+                                            </td>
+                                        </tr>
+                                        <tr class="block-properties">
+                                            <td class="form-row text-inputs">
+                                                <div class="color-inputs">
+                                                    <color-picker :color="currentElement.options[key]['color']" @update:color="color => currentElement.options[key]['color'] = color"></color-picker>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                    
+                                    <template v-if="currentElement.options[key]['weight']">
+                                        <tr>
+                                            <td class="label-padding"><label for="font-weight" class="label">Font Weight</label></td>
+                                        </tr>
+                                        <tr class="block-properties">
+                                            <td class="tdSelect form-row color-inputs" >
+                                                <select class="input" id="font-weight" v-model="currentElement.options[key]['weight']">
+                                                    <option v-for="option in currentElement.options[key]['weightOptions']" :value="option">{{option}}</option>
+                                                </select>
+                                                <i class="dropdownCarrot material-icons">keyboard_arrow_down</i>
+                                            </td>
+                                        </tr>
+                                    </template>
+
+                                    <template v-if="currentElement.options[key]['italic'] !== undefined">
+                                        <tr>
+                                            <td class="label-padding">
+                                                <label class="label" id='yes' role="label" for="checkbox-2">Italic</label>
+                                            </td>
+                                        </tr>
+                                        <tr class="block-properties">
+                                            <td class="tdSelect form-row">
+                                                <select class="input" v-model="currentElement.options[key]['italic']">
+                                                    <option value="italic">Yes</option>
+                                                    <option default value="">No</option>
+                                                </select>
+                                                <i class="dropdownCarrot material-icons">keyboard_arrow_down</i>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </template>
+
+                                <template v-if="key == 'lineHeight'">
+                                    <tr>
+                                        <td class="label-padding">
+                                            <span class="label">Line Height</span>
+                                        </td>
+                                    </tr>
+                                    <tr class="block-properties">
+                                        <td class="tdSelect form-row text-inputs" >
+                                            <select class="input" id="font-family" v-model="currentElement.options['lineHeight']">
+                                                <option value="s1" >small</option>
+                                                <option value="s2" >default</option>
+                                                <option value="s3" >1 1/2 Spacing</option>
+                                                <option value="s4" >Double Spaced</option>
+                                            </select>
+                                            <i class="dropdownCarrot material-icons">keyboard_arrow_down</i>
+                                        </td>
+                                    </tr>
+                                </template>    
+
+                            </template>
+                        </form>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</transition>

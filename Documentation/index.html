@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Angular builder Documentation</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<aside>
+    <header>
+        <img src="images/logo.png" alt="logo">
+    </header>
+    <nav>
+        <ul>
+            <li><a href="#start">How to start</a></li>
+            <li><a href="#changes">Need changes?</a></li>
+            <li><a href="#apache">Can install on Apache?</a></li>
+            <li><a href="#dependencies">Dependencies</a></li>
+        </ul>
+    </nav>
+</aside>
+<main>
+    <content>
+        <h1>Thank you</h1>
+        <p>Hi, Thank you for purchasing! <br/> I hope this Email builder will be helpful for you.</p>
+
+        <h2 id="start">How to start</h2>
+        <p>
+            To start project in production mode, you need to run <code>npm start</code> directly from root folder.
+            <br> Then navigate to <code>http://localhost:8000</code>. <br>
+            Don't want start this project in <i>NodeJS</i>? No problem, run it on <a href="#apache">any server</a>!
+        </p>
+
+        <h2 id="changes">Need Changes?</h2>
+        <p>If you want to make changes, run <code>npm install && npm run dev</code> and open <code>http://localhost:9000</code> in your browser for development mode.
+            <br> All logical functions are in <strong>app/app.js</strong> and <strong>app/builder/builder.html</strong>.</p>
+
+        <h2 id="apache">Can install on Apache?</h2>
+        <p>Of course, you can install it in any server which you want ... just copy all files from <strong>_dist</strong> folder in your host root folder!</p>
+
+        <h2 id="dependencies">Dependencies</h2>
+        <ul>
+            <li><a target="_blank" href="https://alertifyjs.org/">AlertifyJS</a></li>
+            <li><a target="_blank" href="https://github.com/vuejs/vue">VueJs</a></li>
+            <li><a target="_blank" href="https://www.tinymce.com/">TinyMCE</a></li>
+            <li><a target="_blank" href="https://github.com/SortableJS/Vue.Draggable">Vue Draggable</a></li>
+            <li><a target="_blank" href="https://github.com/stevenbenner/jquery-powertip">jQuery Powertip</a></li>
+        </ul>
+    </content>
+    <footer>
+        <h4>Important: All folders from /app must be accesible from browser!</h4>
+        <small>Any questions? Leave me an email at <span>ionprodan33@gmail.com</span> with subject '<span>Angular email builder</span>'</small>
+    </footer>
+</main>
+<script>
+    WebFontConfig = {
+        google: {
+            families: ['Raleway']
+        }
+    };
+
+    (function(d) {
+        var wf = d.createElement('script'), s = d.scripts[0];
+        wf.src = 'https://ajax.googleapis.com/ajax/libs/webfont/1.6.26/webfont.js';
+        wf.async = true;
+        s.parentNode.insertBefore(wf, s);
+    })(document);
+</script>
+</body>
+</html>
